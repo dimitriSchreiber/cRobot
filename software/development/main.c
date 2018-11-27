@@ -11,6 +11,10 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <netinet/in.h>
+
+#include <rc/math.h>
+#include <rc/time.h>
+
 #include "main.h"
 
 int E_STATE = 0;
@@ -28,18 +32,43 @@ int CURRENT_FLAG = 0;
 int TRAVEL_FLAG = 0;
 int ETSOP_FLAG = 0;
 
+/*------------------------------------------
+FPGA PID Gains
+-----------------------------------------*/
 uint8_t P=150;
 uint8_t P2=150;
 uint8_t I=0;
 uint8_t D=0;
 float controllerGain = 0.02;
 float avg_current = 0;
+float dt = 1 / (float)SAMPLE_RATE;
+
+/*------------------------------------------
+C side PID filter setup
+-----------------------------------------*/
+double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
+double ARM_I[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+double ARM_D[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+
 
 int main(int argc, char **argv)
 {
-	/*------------------------------------------
-	Generic setup below for port communication
-	-----------------------------------------*/
+
+	rc_filter_t ARM_PID0 = rc_filter_empty();
+	rc_filter_t ARM_PID1 = rc_filter_empty();
+	rc_filter_t ARM_PID2 = rc_filter_empty();
+	rc_filter_t ARM_PID3 = rc_filter_empty();
+	rc_filter_t ARM_PID4 = rc_filter_empty();
+	rc_filter_t ARM_PID5 = rc_filter_empty();
+	rc_filter_t ARM_PID6 = rc_filter_empty();
+	rc_filter_t ARM_PID7 = rc_filter_empty();
+
+	int i;
+
+/*------------------------------------------
+Generic setup below for port communication
+-----------------------------------------*/
 
     if (argc < 2) {
         fprintf(stderr,"ERROR, no port provided\n");
@@ -48,24 +77,24 @@ int main(int argc, char **argv)
    	portnumber_global = atoi(argv[1]);
 	//pthread_t pth, pth_heartbeat;	// this is our thread identifier
 
-	/*--------------------------------
-	ctrl-c catcher
-	--------------------------------*/
+/*--------------------------------
+ctrl-c catcher
+--------------------------------*/
 	struct sigaction sigIntHandler;
 	sigIntHandler.sa_handler = my_handler;
    	sigemptyset(&sigIntHandler.sa_mask);
   	sigIntHandler.sa_flags = 0;
   	sigaction(SIGINT, &sigIntHandler, NULL);
-	/*
 
-	------------------------------------------
-	Setup FPGA communication
-	------------------------------------------
-	*///sig
+/*------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------
+Setup FPGA communication
+------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------*/
 	void *virtual_base;
 	int fd;
-	int i;
 	int j;
+	int k;
 	// map the address space for the LED registers into user space so we can interact with them.
 	// we'll actually map in the entire CSR span of the HPS since we want to access various registers within that span
 	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) {
@@ -136,20 +165,24 @@ int main(int argc, char **argv)
 	pthread_create(&pth_heartbeat,NULL,heartbeat_func,NULL);
 	pthread_create(&pth,NULL,threadFunc,NULL);
 
-	/*--------------------------------
-	initial setpoints to zero
-	--------------------------------*/
+/*--------------------------------
+initial setpoints to zero
+--------------------------------*/
 	for(i=0;i<8;i++){
 			position_setpoints[i] = 0;
-		}
+	}
 
-	/*--------------------------------
-	//set PWM values to zero
-	--------------------------------*/
-	for(j=0;j<8;j++){
+/*--------------------------------
+set PWM values to zero
+--------------------------------*/
+	for(k=0;k<8;k++){
 		alt_write_word(h2p_lw_pwm_values_addr[j], 0);
 	}
-		
+	
+/*--------------------------------
+calculate FPGA PID values
+--------------------------------*/
+
 	//calculate PID values
 	uint32_t PID_values = 0;
 	PID_values = PID_values | (P+I+D);
@@ -164,19 +197,30 @@ int main(int argc, char **argv)
 	printf("Received: P: %d, I: %d, D: %d, P2: %d\n\n", (uint8_t)(pid_values_read & (0x000000FF)), (uint8_t)((pid_values_read & (0x0000FF00))>>8), (uint8_t)((pid_values_read & (0x00FF0000))>>16)), (uint8_t)((pid_values_read & (0xFF000000))>>24);
 	
 
-	/*--------------------------------
-	calibrate current sense
-	--------------------------------*/
+/*--------------------------------
+calibrate current sense
+--------------------------------*/
 	int current_offset;
 	printf("Calculating current offset please wait...\n");
 	current_offset = calc_current_offset(h2p_lw_adc);
 	printf("Current offset is: %d\n", current_offset);
 
-	/*
-	------------------------------------------
-	Run controller
-	------------------------------------------
-	*/
+/*--------------------------------
+setup local PID controllers
+--------------------------------*/
+	rc_filter_pid(&ARM_PID0, ARM_P[0], ARM_I[0], ARM_D[0], dt, dt);
+	rc_filter_pid(&ARM_PID1, ARM_P[1], ARM_I[1], ARM_D[1], dt, dt);
+	rc_filter_pid(&ARM_PID2, ARM_P[2], ARM_I[2], ARM_D[2], dt, dt);
+	rc_filter_pid(&ARM_PID3, ARM_P[3], ARM_I[3], ARM_D[3], dt, dt);
+	rc_filter_pid(&ARM_PID4, ARM_P[4], ARM_I[4], ARM_D[4], dt, dt);
+	rc_filter_pid(&ARM_PID5, ARM_P[5], ARM_I[5], ARM_D[5], dt, dt);
+	rc_filter_pid(&ARM_PID6, ARM_P[6], ARM_I[6], ARM_D[6], dt, dt);
+	rc_filter_pid(&ARM_PID7, ARM_P[7], ARM_I[7], ARM_D[7], dt, dt);
+
+
+/*------------------------------------------
+Run controller
+------------------------------------------*/
 	int dir_bitmask;
 	long myCounter = 0;
 	int32_t e_stop=0;
@@ -188,8 +232,8 @@ int main(int argc, char **argv)
 	int adc_data;
 	float current;
 
-	for(j = 0; j<8; j++){
-		tracking_error[j] = 0;
+	for(k = 0; k<8; k++){
+		tracking_error[k] = 0;
 	}
 
 	while(exit_flag == 0)
@@ -201,9 +245,7 @@ int main(int argc, char **argv)
 		switch_states[2] = (switches&1<<2)==0;
 		switch_states[3] = (switches&1<<1)==0;
 		switch_states[4] = (switches&1<<7)>0;
-		//switch_states[4] = (switches&1<<7)==0;
 		switch_states[5] = (switches&1<<6)>0;
-		//switch_states[5] = (switches&1<<6)==0;
 		switch_states[6] = (switches&1<<5)==0;
 		switch_states[7] = (switches&1<<4)==0;
 
@@ -219,12 +261,6 @@ int main(int argc, char **argv)
 		for(j = 0; j<8; j++){
 			int32_t output = alt_read_word(h2p_lw_quad_addr[j]);
 			internal_encoders[j] = output;
-
-			if(j==7 && output > max_val)
-				max_val = output;
-
-			if(j==7 && output < min_val)
-				min_val = output;
 			
 			//read external joint encoders
 			if(j==7){
@@ -266,7 +302,46 @@ int main(int argc, char **argv)
 				int32_t check_error = (int32_t)(*h2p_lw_quad_addr[j]);// - position_setpoints[j];
 				
 				usleep(10);
-				int32_t pid_output = (int32_t)(alt_read_word(h2p_lw_pid_output_addr[j])) * controllerGain;
+				//int32_t pid_output = (int32_t)(alt_read_word(h2p_lw_pid_output_addr[j])) * controllerGain;
+				//EDIT: trying to use jame's code
+				double error_degrees = (double)error / 2000.0 * 360;
+				double pid_output_ARM;
+
+				switch(j){
+					case 0:
+						pid_output_ARM = rc_filter_march(&ARM_PID0, error) * 2048;
+				        break;
+						//printf("1");
+					case 1:
+						pid_output_ARM = rc_filter_march(&ARM_PID1, error) * 2048;
+						break;
+						//printf("2");
+					case 2:
+						pid_output_ARM = rc_filter_march(&ARM_PID2, error) * 2048;
+						break;
+						//printf("3");
+					case 3:
+						pid_output_ARM = rc_filter_march(&ARM_PID3, error) * 2048;
+						break;
+						//printf("4");
+					case 4:
+						pid_output_ARM = rc_filter_march(&ARM_PID4, error) * 2048;
+						break;
+						//printf("5");
+					case 5:
+						pid_output_ARM = rc_filter_march(&ARM_PID5, error) * 2048;
+						break;
+						//printf("6");
+					case 6:
+						pid_output_ARM = rc_filter_march(&ARM_PID6, error) * 2048;
+						break;
+						//printf("7");
+					case 7:
+						pid_output_ARM = rc_filter_march(&ARM_PID7, error) * 2048;
+						break;
+						//printf("8");
+				}
+				int32_t pid_output = (int32_t)pid_output_ARM;
 				int32_t positive_pid_output = (pid_output>=0);
 				int32_t pid_output_cutoff = fabs(pid_output)*(fabs(pid_output) <= 2047) + 2047*(fabs(pid_output) > 2047);	
 				
@@ -279,9 +354,6 @@ int main(int argc, char **argv)
 						dir_bitmask |= (1<<(j+4));
 					else
 						dir_bitmask &= ~(1<<(j+4));
-					//dir_bitmask = dir_bitmask
-					//alt_write_word(h2p_lw_gpio_addr, (positive_pid_output * (0b00010000<<j)));
-					//alt_write_word(h2p_lw_gpio_addr, (positive_pid_output * (1<<(j+4))));
 					alt_write_word(h2p_lw_gpio_addr, dir_bitmask);
 				}
 				else{
@@ -297,7 +369,7 @@ int main(int argc, char **argv)
 				}
 				
 
-				if(myCounter%100 == 0 && j == 7){
+				if(0 && myCounter%500 == 0 && j == 7){
 					printf("Raw value read from the ADC is : %d\n", adc_data);
 					printf("Average current value is: %f\n", avg_current);
 

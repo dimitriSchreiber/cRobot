@@ -15,7 +15,7 @@ OBJ_DIR = objs
 _OBJS = main.o thread_funcs.o utils.o signal_handler.o
 OBJS = $(patsubst %,$(OBJ_DIR)/%,$(_OBJS))
 
-LIBS = -lm
+LIBS = -lm -lrt -l:librobotcontrol.so.1
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) $(LIBS)

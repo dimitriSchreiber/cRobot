@@ -11,7 +11,7 @@
 //MACROS
 #define SAMPLE_RATE 1000
 #define SYNC_TOLERANCE 10
-#define dt (1.0/(float)SAMPLE_RATE)
+//#define dt (1.0/(float)SAMPLE_RATE)
 #define interval_time_us ((int)(dt * 1000000))
 #define update_dt 0.01
 #define HW_REGS_BASE ( ALT_STM_OFST )
@@ -19,7 +19,7 @@
 #define HW_REGS_MASK ( HW_REGS_SPAN - 1 )
 #define MAX_TRAVEL_RANGE 10000000
 #define MAX_CURRENT 2.5 //amps
-
+#define TIME_CONSTANT	2.0
 //Globals
 volatile unsigned long *h2p_lw_led_addr;
 volatile unsigned long *h2p_lw_gpio_addr;
@@ -44,6 +44,8 @@ uint8_t switch_states[8];
 int32_t internal_encoders[8];
 int32_t arm_encoders1,arm_encoders2,arm_encoders3,arm_encoders4;
 int exit_flag;
+
+float dt;
 
 int portnumber_global;
 int socket_error;
