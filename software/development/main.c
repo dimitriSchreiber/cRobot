@@ -65,8 +65,6 @@ int main(int argc, char **argv)
 	rc_filter_t ARM_PID6 = rc_filter_empty();
 	rc_filter_t ARM_PID7 = rc_filter_empty();
 
-	int i;
-
 /*------------------------------------------
 Generic setup below for port communication
 -----------------------------------------*/
@@ -94,8 +92,7 @@ Setup FPGA communication
 ------------------------------------------------------------------------------------------------------------------------------*/
 	void *virtual_base;
 	int fd;
-	int j;
-	int k;
+	int i,j,k;
 	// map the address space for the LED registers into user space so we can interact with them.
 	// we'll actually map in the entire CSR span of the HPS since we want to access various registers within that span
 	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) {
@@ -231,6 +228,8 @@ Run controller
 	double tracking_error[8];
 
 	int adc_data;
+	float avg_current_array[7]={0};
+
 	float current;
 
 	for(k = 0; k<8; k++){
@@ -252,11 +251,17 @@ Run controller
 
 		//ADC read
 		*(h2p_lw_adc) = 0; //write starts adc read
-		adc_data = *(h2p_lw_adc); //read
-		current = (adc_data - current_offset)* 0.001;
-		current = current * (current > 0);
-		avg_current = 0.3 * current + 0.7 * avg_current;
-		//avg_current = avg_current * (avg_current > 0);
+		// adc_data = *(h2p_lw_adc); //read
+		// current = (adc_data - current_offset)* 0.001;
+		// current = current * (current > 0);
+		// avg_current = 0.3 * current + 0.7 * avg_current;
+
+		for (i=0; i<7; i++){
+			adc_data = *(h2p_lw_adc + i); //read
+			current = (adc_data - current_offset)* 0.001;
+			current = current * (current > 0);
+			avg_current_array[i] = 0.3 * current + 0.7 * avg_current_array[i];
+		}
 
 		//Read encoder positions
 		for(j = 0; j<8; j++){
@@ -369,6 +374,18 @@ Run controller
 					}
 				}
 				
+
+				//PRINTS ALL CURRENT VALUES FROM ADC
+				// if(myCounter%10 == 0 && j == 7){
+				// 	printf("Avg current values: ");
+				// 	//printf("%f\n", avg_current);
+
+				// 	for(i=0; i<7; i++){
+				// 		printf("%.5f ", avg_current_array[i]);
+				// 	}
+				// 	printf("\n");
+				// }
+
 
 				if(0 && myCounter%500 == 0 && j == 7){
 					printf("Raw value read from the ADC is : %d\n", adc_data);
