@@ -295,6 +295,8 @@ Run controller
 			}
 			//normal operation
 			else{
+
+				//IF I HAVE  TIME! ADD INTERPOLATION OR VELOCITY LIMITS HERE!!!! FOR NOW IT SEEMS TO BE PRETTY GOOD THOUGH.
 				alt_write_word(h2p_lw_quad_reset_addr, 0);
 				int32_t error = internal_encoders[j] - position_setpoints[j];
 				tracking_error[j] = tracking_error[j]*0.99 + error*.01; //only used in printout
