@@ -61,6 +61,7 @@ uint8_t I;
 uint8_t D;
 float controllerGain;
 float avg_current;
+float avg_current_array[8];
 
 pthread_t pth, pth_heartbeat;	// this is our thread identifier
 
@@ -79,7 +80,9 @@ struct axis_motor{
 };
 
 //Functions
-int calc_current_offset(volatile unsigned long *h2p_lw_adc);
+void write_string(char *write_buffer);
+
+void calc_current_offset(volatile unsigned long *h2p_lw_adc, int *offset);
 
 void *heartbeat_func(void *arg);
 

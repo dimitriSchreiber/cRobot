@@ -1,3 +1,4 @@
+#Examples: http://www.cs.colby.edu/maxwell/courses/tutorials/maketutor/
 TARGET = HPS_CONTROL_FPGA
 
 #fpga compile flags
@@ -10,7 +11,7 @@ CFLAGS = -g -Wall -D $(ALT_DEVICE_FAMILY) -I
 LDFLAGS = -g -Wall -pthread
 
 VPATH = functions fpga_headers
-HEADERS = main.h hps_0.h
+HEADERS = main.h #hps_0.h not sure if this .h is needed or not, was working prior with it
 OBJ_DIR = objs
 _OBJS = main.o thread_funcs.o utils.o signal_handler.o
 OBJS = $(patsubst %,$(OBJ_DIR)/%,$(_OBJS))

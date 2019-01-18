@@ -23,6 +23,7 @@ int CONNECTED = 0;  //global flag to indicate if a connection has been made
 int32_t beat = 0;
 uint8_t switch_states[8];
 int32_t internal_encoders[8];
+float avg_current_array[8]={0};
 int32_t arm_encoders1=0,arm_encoders2=0,arm_encoders3=0,arm_encoders4=0;
 int exit_flag = 0;
 int socket_error = 0;
@@ -198,10 +199,15 @@ calculate FPGA PID values
 /*--------------------------------
 calibrate current sense
 --------------------------------*/
-	int current_offset;
+	int current_offset[8];
 	printf("Calculating current offset please wait...\n");
-	current_offset = calc_current_offset(h2p_lw_adc);
-	printf("Current offset is: %d\n", current_offset);
+	calc_current_offset(h2p_lw_adc, current_offset);
+
+	printf("Current offset is:");
+	for(i=0;i<8;i++){
+		printf(" %d", current_offset[i]);
+	}
+	printf("\n");
 
 /*--------------------------------
 setup local PID controllers
@@ -228,8 +234,6 @@ Run controller
 	double tracking_error[8];
 
 	int adc_data;
-	float avg_current_array[7]={0};
-
 	float current;
 
 	for(k = 0; k<8; k++){
@@ -251,14 +255,12 @@ Run controller
 
 		//ADC read
 		*(h2p_lw_adc) = 0; //write starts adc read
-		// adc_data = *(h2p_lw_adc); //read
-		// current = (adc_data - current_offset)* 0.001;
-		// current = current * (current > 0);
-		// avg_current = 0.3 * current + 0.7 * avg_current;
+		//ADC_Controller_for_DE_Series_Boards.pdf pg3 reference we might have old data spi to read different channels
+		//reference Using_DE_Series_ADC.pdf page 12 for example
 
 		for (i=0; i<7; i++){
-			adc_data = *(h2p_lw_adc + i); //read
-			current = (adc_data - current_offset)* 0.001;
+			adc_data = *(h2p_lw_adc + i); //read, pointer addition increments address by parent datat type size, in this case i*32 bits
+			current = (adc_data - current_offset[i])* 0.001; // 4096 for ADC, 4.096v reference, unit of Volts and 1A/1V for current sensor --> A units too
 			current = current * (current > 0);
 			avg_current_array[i] = 0.3 * current + 0.7 * avg_current_array[i];
 		}
@@ -377,7 +379,7 @@ Run controller
 				}
 				
 
-				//PRINTS ALL CURRENT VALUES FROM ADC
+				// //PRINTS ALL CURRENT VALUES FROM ADC
 				// if(myCounter%10 == 0 && j == 7){
 				// 	printf("Avg current values: ");
 				// 	//printf("%f\n", avg_current);

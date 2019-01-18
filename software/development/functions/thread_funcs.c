@@ -53,9 +53,9 @@ setup socket communication
 	strcpy(zero_state, "zero");
 	int portno;
     socklen_t clilen;
-    char buffer[256];
-    char old_buffer[256];
-    char write_buffer[256];
+    char buffer[1024];
+    char old_buffer[1024];
+    char write_buffer[1024];
     struct sockaddr_in serv_addr, cli_addr;
     int n, j, k;
     int state=1;
@@ -93,21 +93,34 @@ setup socket communication
     }
 
 
-    bzero(buffer,256);
-    bzero(old_buffer,256);
-    bzero(write_buffer,256);
+    bzero(buffer,1024);
+    bzero(old_buffer,1024);
+    bzero(write_buffer,1024);
 	char *str;
 
 	str=(char*)arg;
 
 	//initialize python side with position
-	sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
-		internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
-		switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
-		arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current);
-	n = write(newsockfd,write_buffer,256);
+	write_string(write_buffer); //update string
+
+	// sprintf(write_buffer,"nn %9d %9d %9d %9d %9d %9d %9d %9d %1d %1d %1d %1d %1d %1d %1d %1d %5d %5d %5d %5d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
+	// 	internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
+	// 	switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
+	// 	arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0]);
+
+	n = write(newsockfd,write_buffer,1024);
 
 	while(system_state == 1 && socket_error == 0){
+
+		//printf("%s", write_buffer);
+		printf("Avg current values: ");
+		//printf("%f\n", avg_current);
+		int i;
+		for(i=0; i<7; i++){
+			printf("%.5f ", avg_current_array[i]);
+		}
+		printf("\n");
+	
 
 		nanosleep((const struct timespec[]){{0, 2500000L}}, NULL);
 
@@ -130,13 +143,14 @@ setup socket communication
 
 		}
 		else{
-	   		sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
-	   			internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
-	   			switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
-	   			arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current);
+			write_string(write_buffer); //update string
+	   		// sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
+	   		// 	internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
+	   		// 	switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
+	   		// 	arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0]);
 	   	}
 
-    	n = write(newsockfd,write_buffer,256);
+    	n = write(newsockfd,write_buffer,1024);
     	if (n < 0){
     		error("ERROR writing to socket");
     		break;
@@ -145,7 +159,7 @@ setup socket communication
 		/*--------------------------------
 		read from socket
 		--------------------------------*/
-		n = read(newsockfd,buffer,255); //blocking function, unless set with fcntl or something
+		n = read(newsockfd,buffer,1024); //blocking function, unless set with fcntl or something
    		if (n < 0){
    			error("ERROR reading from socket");
    			break;
@@ -157,21 +171,24 @@ setup socket communication
    		pch = strtok (buffer,"bd ");
     	for(k = 0; k<8; k++){
 			if(strncmp(pch,deadsok,4)==0){
-				close(newsockfd);
+				close(newsockfd); //closes the old connection when told to
 				E_STATE = 1;
 				ERR_RESET = 1;
 			    listen(sockfd,5);
 			    clilen = sizeof(cli_addr);
 
+			    //this is blocking while we wait for a new connection
 			    newsockfd = accept(sockfd, 
 			                (struct sockaddr *) &cli_addr, 
 			                &clilen);
 
-				sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
-					internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
-					switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
-					arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current);
-				n = write(newsockfd,write_buffer,256);
+			    //possibly needed for arming, was also used in the past to update to stored encoder values
+				write_string(write_buffer); //update string
+				// sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
+				// 	internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
+				// 	switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
+				// 	arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0]);
+				n = write(newsockfd,write_buffer,1024);
 
 			    CONNECTED = 1; //change CONNECTED to 1 if connection is made, 
 

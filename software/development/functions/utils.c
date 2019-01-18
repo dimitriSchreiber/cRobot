@@ -2,21 +2,37 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+void write_string(char *write_buffer){
+	bzero(write_buffer,1024);
 
-int calc_current_offset(volatile unsigned long *h2p_lw_adc){
-	int counter = 300, offset;
-	double adc_sum = 0;
+	// sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f qq", internal_encoders[0], internal_encoders[1], internal_encoders[2],\
+	// 	internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6], internal_encoders[7], switch_states[0],\
+	// 	switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
+	// 	arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0]);
+
+
+	sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f qq",internal_encoders[0],\
+		internal_encoders[1], internal_encoders[2], internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6],\
+		internal_encoders[7], switch_states[0], switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
+		arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0],avg_current_array[1],avg_current_array[2],\
+		avg_current_array[3],avg_current_array[4],avg_current_array[5],avg_current_array[6],avg_current_array[7]);
+}
+
+void calc_current_offset(volatile unsigned long *h2p_lw_adc, int *offset){
+	int counter = 300,i,j;
 
 	//sample at 100hz for 3 seconds
-	while(counter > 0){
+	for(j = 0; j < counter; j++){
 		*(h2p_lw_adc) = 0; //write starts adc read
-		adc_sum = *(h2p_lw_adc) + adc_sum; //read
-		counter = counter - 1;
+		for (i=0; i<8; i++){
+			offset[i] += *(h2p_lw_adc + i); // 4096 for ADC, 4.096v reference, unit of Volts and 1A/1V for current sensor --> A units too
+		}
 		usleep(10000);
 	}
 	
-	offset = (int)(adc_sum/300);
-	return offset;
+	for(i=0; i<8; i++){
+		offset[i] /= counter;
+	}
 }
 
 uint32_t createMask(uint32_t startBit, int num_bits)
