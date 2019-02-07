@@ -113,13 +113,13 @@ setup socket communication
 	while(system_state == 1 && socket_error == 0){
 
 		//printf("%s", write_buffer);
-		printf("Avg current values: ");
+		//printf("Avg current values: ");
 		//printf("%f\n", avg_current);
-		int i;
-		for(i=0; i<7; i++){
-			printf("%.5f ", avg_current_array[i]);
-		}
-		printf("\n");
+		//int i;
+		//for(i=0; i<7; i++){
+		//	printf("%.5f ", avg_current_array[i]);
+		//}
+		//printf("\n");
 	
 
 		nanosleep((const struct timespec[]){{0, 2500000L}}, NULL);

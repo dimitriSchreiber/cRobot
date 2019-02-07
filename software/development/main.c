@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <netinet/in.h>
+#include <inttypes.h>
+
 
 #include <rc/math.h>
 #include <rc/time.h>
@@ -28,6 +30,9 @@ int32_t arm_encoders1=0,arm_encoders2=0,arm_encoders3=0,arm_encoders4=0;
 int exit_flag = 0;
 int socket_error = 0;
 int system_state = 1;
+uint64_t loopStartTime = 0;
+uint64_t loopEndTime = 0;
+uint64_t loopEndAfterSleep = 0;
 
 int CURRENT_FLAG = 0;
 int TRAVEL_FLAG = 0;
@@ -42,15 +47,16 @@ uint8_t I=0;
 uint8_t D=0;
 float controllerGain = 0.02;
 float avg_current = 0;
-float dt = 1 / (float)SAMPLE_RATE;
+//float dt = 1 / (float)SAMPLE_RATE;
+float dt = 0.001;
 
 /*------------------------------------------
 C side PID filter setup
 -----------------------------------------*/
 //double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
-double ARM_P[8] = {0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001};
-double ARM_I[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-double ARM_D[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+double ARM_P[8] = {0.00005, 0.000015, 0.00007, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005};
+double ARM_I[8] = {0.0, 0.0, 0.0000000, 0.0, 0.0, 0.0, 0.0, 0.0};
+double ARM_D[8] = {0.00000, 0.00000000, 0.00000, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 
 
@@ -212,14 +218,14 @@ calibrate current sense
 /*--------------------------------
 setup local PID controllers
 --------------------------------*/
-	rc_filter_pid(&ARM_PID0, ARM_P[0], ARM_I[0], ARM_D[0], dt, dt);
-	rc_filter_pid(&ARM_PID1, ARM_P[1], ARM_I[1], ARM_D[1], dt, dt);
-	rc_filter_pid(&ARM_PID2, ARM_P[2], ARM_I[2], ARM_D[2], dt, dt);
-	rc_filter_pid(&ARM_PID3, ARM_P[3], ARM_I[3], ARM_D[3], dt, dt);
-	rc_filter_pid(&ARM_PID4, ARM_P[4], ARM_I[4], ARM_D[4], dt, dt);
-	rc_filter_pid(&ARM_PID5, ARM_P[5], ARM_I[5], ARM_D[5], dt, dt);
-	rc_filter_pid(&ARM_PID6, ARM_P[6], ARM_I[6], ARM_D[6], dt, dt);
-	rc_filter_pid(&ARM_PID7, ARM_P[7], ARM_I[7], ARM_D[7], dt, dt);
+	rc_filter_pid(&ARM_PID0, ARM_P[0], ARM_I[0], ARM_D[0], 4*dt, dt);
+	rc_filter_pid(&ARM_PID1, ARM_P[1], ARM_I[1], ARM_D[1], 4*dt, dt);
+	rc_filter_pid(&ARM_PID2, ARM_P[2], ARM_I[2], ARM_D[2], 4*dt, dt);
+	rc_filter_pid(&ARM_PID3, ARM_P[3], ARM_I[3], ARM_D[3], 4*dt, dt);
+	rc_filter_pid(&ARM_PID4, ARM_P[4], ARM_I[4], ARM_D[4], 4*dt, dt);
+	rc_filter_pid(&ARM_PID5, ARM_P[5], ARM_I[5], ARM_D[5], 4*dt, dt);
+	rc_filter_pid(&ARM_PID6, ARM_P[6], ARM_I[6], ARM_D[6], 4*dt, dt);
+	rc_filter_pid(&ARM_PID7, ARM_P[7], ARM_I[7], ARM_D[7], 4*dt, dt);
 
 
 /*------------------------------------------
@@ -242,6 +248,7 @@ Run controller
 
 	while(exit_flag == 0)
 	{
+		loopStartTime = rc_nanos_since_epoch();
 		//On motor bank limit switches
 		uint32_t switches = alt_read_word(h2p_lw_limit_switch_addr);
 		switch_states[0] = (switches&1<<0)==0;
@@ -415,10 +422,23 @@ Run controller
 				}
 			}
 		}
-
 		myCounter++;
-		usleep(1000);
+		loopEndTime = rc_nanos_since_epoch();
+		int uSleepTime = (1000 - (int)(loopEndTime - loopStartTime)/1000);
+		if(uSleepTime > 0){
+			rc_usleep(uSleepTime);
+			//printf("We good");
+		}
+		else{
+			rc_usleep(10);
+			printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
+		}
 
+		loopEndAfterSleep = rc_nanos_since_epoch();
+		if(0 && myCounter%100 == 0){
+			printf("Loop time (s): %f", ((float)(loopEndTime - loopStartTime))/1000000000);
+			printf("Loop time w/ sleep (s): %f", ((float)(loopEndAfterSleep - loopStartTime))/1000000000);
+		}
 	}
 	if( munmap( virtual_base, HW_REGS_SPAN ) != 0 ) {
 		printf( "ERROR: munmap() failed...\n" );
