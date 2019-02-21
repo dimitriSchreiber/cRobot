@@ -53,10 +53,14 @@ float dt = 0.001;
 /*------------------------------------------
 C side PID filter setup
 -----------------------------------------*/
+
+#define P_float 0.000007
+#define I_float 0.000008
+#define D_float 0.00000002
 //double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
-double ARM_P[8] = {0.00005, 0.000015, 0.00007, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005};
-double ARM_I[8] = {0.0, 0.0, 0.0000000, 0.0, 0.0, 0.0, 0.0, 0.0};
-double ARM_D[8] = {0.00000, 0.00000000, 0.00000, 0.0, 0.0, 0.0, 0.0, 0.0};
+double ARM_P[8] = {P_float, P_float, P_float, P_float, P_float, P_float, P_float, P_float};
+double ARM_I[8] = {I_float, I_float, I_float, I_float, I_float, I_float, I_float, I_float};
+double ARM_D[8] = {D_float, D_float, D_float, D_float, D_float, D_float, D_float, D_float};
 
 
 
@@ -425,13 +429,14 @@ Run controller
 		myCounter++;
 		loopEndTime = rc_nanos_since_epoch();
 		int uSleepTime = (1000 - (int)(loopEndTime - loopStartTime)/1000);
+		//rc_usleep(1000);
 		if(uSleepTime > 0){
 			rc_usleep(uSleepTime);
 			//printf("We good");
 		}
 		else{
-			rc_usleep(10);
-			printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
+			rc_usleep(100);
+			//printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
 		}
 
 		loopEndAfterSleep = rc_nanos_since_epoch();
