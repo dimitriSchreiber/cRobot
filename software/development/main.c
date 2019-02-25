@@ -54,9 +54,9 @@ float dt = 0.001;
 C side PID filter setup
 -----------------------------------------*/
 
-#define P_float 0.000007
-#define I_float 0.000008
-#define D_float 0.00000002
+#define P_float 0.000006
+#define I_float 0.000006
+#define D_float 0.000000015
 //double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
 double ARM_P[8] = {P_float, P_float, P_float, P_float, P_float, P_float, P_float, P_float};
 double ARM_I[8] = {I_float, I_float, I_float, I_float, I_float, I_float, I_float, I_float};
