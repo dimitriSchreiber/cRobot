@@ -61,6 +61,9 @@ setup socket communication
     int state=1;
     int avg_current_ma = 0;
 
+    uint64_t loopStartTime = 0;
+	uint64_t loopEndTime = 0;
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0){ 
@@ -122,7 +125,11 @@ setup socket communication
 		//printf("\n");
 	
 
-		nanosleep((const struct timespec[]){{0, 2500000L}}, NULL);
+		//nanosleep((const struct timespec[]){{0, 1000000L}}, NULL);
+		loopStartTime = rc_nanos_since_epoch();
+
+
+
 
 		avg_current_ma = (int)(avg_current*1000);
 		/*--------------------------------
@@ -221,6 +228,18 @@ setup socket communication
 				position_setpoints[k] = atoi(pch);
 			}
 			pch = strtok (NULL,"bd ");
+		}
+
+		loopEndTime = rc_nanos_since_epoch();
+		int uSleepTime = (1000 - (int)(loopEndTime - loopStartTime)/1000);
+		//rc_usleep(1000);
+		if(uSleepTime > 0){
+			rc_usleep(uSleepTime);
+			//printf("We good");
+		}
+		else{
+			rc_usleep(10);
+			//printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
 		}
 	}
 

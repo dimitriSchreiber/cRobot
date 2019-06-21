@@ -30,8 +30,7 @@ int32_t arm_encoders1=0,arm_encoders2=0,arm_encoders3=0,arm_encoders4=0;
 int exit_flag = 0;
 int socket_error = 0;
 int system_state = 1;
-uint64_t loopStartTime = 0;
-uint64_t loopEndTime = 0;
+
 uint64_t loopEndAfterSleep = 0;
 
 int CURRENT_FLAG = 0;
@@ -66,6 +65,9 @@ double ARM_D[8] = {D_float, D_float, D_float, D_float, D_float, D_float, D_float
 
 int main(int argc, char **argv)
 {
+
+	uint64_t loopStartTime = 0;
+	uint64_t loopEndTime = 0;
 
 	rc_filter_t ARM_PID0 = rc_filter_empty();
 	rc_filter_t ARM_PID1 = rc_filter_empty();
@@ -291,6 +293,10 @@ Run controller
 
 
 			e_stop = alt_read_word(h2p_lw_pid_e_stop);
+			
+			//DISABLED ESTOP!!!
+			e_stop = 0;
+
 			//printf("e_stop value %d", e_stop);
 			//E stop state checking
 			if (abs(internal_encoders[j]) > MAX_TRAVEL_RANGE || abs(position_setpoints[j]) > MAX_TRAVEL_RANGE || ERR_RESET || e_stop || avg_current > MAX_CURRENT){
@@ -435,7 +441,7 @@ Run controller
 			//printf("We good");
 		}
 		else{
-			rc_usleep(100);
+			rc_usleep(10);
 			//printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
 		}
 
