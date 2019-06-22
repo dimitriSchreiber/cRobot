@@ -62,6 +62,7 @@ uint8_t D;
 float controllerGain;
 float avg_current;
 float avg_current_array[8];
+uint64_t global_loop_start_time;
 
 pthread_t pth, pth_heartbeat;	// this is our thread identifier
 

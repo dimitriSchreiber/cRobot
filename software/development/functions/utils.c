@@ -1,6 +1,8 @@
 #include "../main.h"
 #include <unistd.h>
 #include <sys/time.h>
+#include <inttypes.h>
+
 
 void write_string(char *write_buffer){
 	bzero(write_buffer,1024);
@@ -11,11 +13,11 @@ void write_string(char *write_buffer){
 	// 	arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0]);
 
 
-	sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f qq",internal_encoders[0],\
+	sprintf(write_buffer,"nn %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %f %f %f %f %f %f %f %f %" PRIu64 " qq",internal_encoders[0],\
 		internal_encoders[1], internal_encoders[2], internal_encoders[3], internal_encoders[4], internal_encoders[5], internal_encoders[6],\
 		internal_encoders[7], switch_states[0], switch_states[1], switch_states[2], switch_states[3], switch_states[4], switch_states[5], switch_states[6], switch_states[7],\
 		arm_encoders1, arm_encoders2, arm_encoders3, arm_encoders4, avg_current_array[0],avg_current_array[1],avg_current_array[2],\
-		avg_current_array[3],avg_current_array[4],avg_current_array[5],avg_current_array[6],avg_current_array[7]);
+		avg_current_array[3],avg_current_array[4],avg_current_array[5],avg_current_array[6],avg_current_array[7], global_loop_start_time);
 }
 
 void calc_current_offset(volatile unsigned long *h2p_lw_adc, int *offset){

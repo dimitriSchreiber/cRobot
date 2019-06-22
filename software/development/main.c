@@ -31,6 +31,8 @@ int exit_flag = 0;
 int socket_error = 0;
 int system_state = 1;
 
+uint64_t global_loop_start_time = 0;
+
 uint64_t loopEndAfterSleep = 0;
 
 int CURRENT_FLAG = 0;
@@ -255,6 +257,7 @@ Run controller
 	while(exit_flag == 0)
 	{
 		loopStartTime = rc_nanos_since_epoch();
+		global_loop_start_time = loopStartTime;
 		//On motor bank limit switches
 		uint32_t switches = alt_read_word(h2p_lw_limit_switch_addr);
 		switch_states[0] = (switches&1<<0)==0;
@@ -442,7 +445,7 @@ Run controller
 		}
 		else{
 			rc_usleep(10);
-			//printf("Overran!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
+			printf("Overran in main control loop!!! %" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n", loopStartTime, loopEndTime, uSleepTime);
 		}
 
 		loopEndAfterSleep = rc_nanos_since_epoch();

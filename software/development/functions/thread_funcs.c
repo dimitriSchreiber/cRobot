@@ -231,7 +231,7 @@ setup socket communication
 		}
 
 		loopEndTime = rc_nanos_since_epoch();
-		int uSleepTime = (1000 - (int)(loopEndTime - loopStartTime)/1000);
+		int uSleepTime = (2000 - (int)(loopEndTime - loopStartTime)/1000);
 		//rc_usleep(1000);
 		if(uSleepTime > 0){
 			rc_usleep(uSleepTime);
