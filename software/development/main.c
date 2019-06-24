@@ -55,9 +55,9 @@ float dt = 0.001;
 C side PID filter setup
 -----------------------------------------*/
 
-#define P_float 0.000006
-#define I_float 0.000006
-#define D_float 0.000000015
+#define P_float 0.000003
+#define I_float 0.000000
+#define D_float 0.00000001
 //double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
 double ARM_P[8] = {P_float, P_float, P_float, P_float, P_float, P_float, P_float, P_float};
 double ARM_I[8] = {I_float, I_float, I_float, I_float, I_float, I_float, I_float, I_float};
@@ -437,7 +437,7 @@ Run controller
 		}
 		myCounter++;
 		loopEndTime = rc_nanos_since_epoch();
-		int uSleepTime = (1000 - (int)(loopEndTime - loopStartTime)/1000);
+		int uSleepTime = (dt*pow(10,6) - (int)(loopEndTime - loopStartTime)/1000);
 		//rc_usleep(1000);
 		if(uSleepTime > 0){
 			rc_usleep(uSleepTime);
