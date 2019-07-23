@@ -11,14 +11,17 @@ CFLAGS = -g -Wall -D $(ALT_DEVICE_FAMILY) -I
 LDFLAGS = -g -Wall -pthread
 
 VPATH = functions fpga_headers
-HEADERS = main.h #hps_0.h not sure if this .h is needed or not, was working prior with it
+HEADERS = main3.h #hps_0.h not sure if this .h is needed or not, was working prior with it
 OBJ_DIR = objs
-_OBJS = main.o thread_funcs.o utils.o signal_handler.o
+_OBJS = main3.o thread_funcs.o utils.o signal_handler.o
 OBJS = $(patsubst %,$(OBJ_DIR)/%,$(_OBJS))
 
 LIBS = -lm -lrt -l:librobotcontrol.so.1
 
 $(OBJ_DIR)/%.o: %.c $(HEADERS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
+
+$(OBJ_DIR)/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
 
 build: $(TARGET)

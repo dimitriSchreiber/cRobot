@@ -37,8 +37,6 @@ volatile unsigned long *h2p_lw_pwm_values_addr[8];
 volatile unsigned long *h2p_lw_adc;
 volatile int32_t position_setpoints[8];
 
-#define MOTOR_DISABLE_PIN 1
-
 int E_STATE;
 int ERR_RESET;
 int CONNECTED;//global flag to indicate if a connection has been made
