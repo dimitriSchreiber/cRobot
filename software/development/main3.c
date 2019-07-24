@@ -19,6 +19,7 @@
 
 #include "main2.h"
 
+
 int E_STATE = 0;
 int ERR_RESET = 1;
 int CONNECTED = 0;  //global flag to indicate if a connection has been made
@@ -53,9 +54,12 @@ float dt = 0.001;
 /*------------------------------------------
 C side PID filter setup
 -----------------------------------------*/
+uint32_t pwm_setpoint = 0;
+uint32_t current_setpoint = 0;
+
 
 #define P_float 0.0005
-#define I_float 0.005
+#define I_float 0.00005
 #define D_float 0.0000006
 //double ARM_P[8] = {0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.0002};
 double ARM_P[8] = {P_float, P_float, P_float, P_float, P_float, P_float, P_float, P_float};
@@ -169,9 +173,12 @@ Setup FPGA communication
 	h2p_lw_pid_output_addr[7] = virtual_base + ( ( unsigned long  )( ALT_LWFPGASLVS_OFST + PID_CORRECTION_PIO_7_BASE ) & ( unsigned long)( HW_REGS_MASK ) );
 	
 	h2p_lw_adc = virtual_base + ( ( unsigned long  )( ALT_LWFPGASLVS_OFST + ADC_0_BASE ) & ( unsigned long)( HW_REGS_MASK ) );
+
+	pthread_t pth_current;
+
 	pthread_create(&pth_heartbeat,NULL,heartbeat_func,NULL);
 	pthread_create(&pth,NULL,threadFunc,NULL);
-
+	//pthread_create(&pth_current,NULL,current_func,NULL);
 
 	rc_filter_pid(&ARM_PID0, ARM_P[0], ARM_I[0], ARM_D[0], 1*dt, dt);
 
@@ -196,7 +203,7 @@ Run controller
 	dir_bitmask = 0x00;
 	double duty = 0.0;
 	int32_t enc_val[8] = {1};
-	int q;
+	//int q;
 	double ez_p = 1;
 	//pull disable low
 	alt_write_word(h2p_lw_gpio0_addr, (1<<1));
@@ -207,7 +214,6 @@ Run controller
 	//begin loop
 	while(exit_flag == 0)
 	{
-		if(1 && myCounter%10 == 0 && myCounter > 100){
 
 		*(h2p_lw_adc) = 0; //write starts adc read
 		//ADC_Controller_for_DE_Series_Boards.pdf pg3 reference we might have old data spi to read different channels
@@ -220,24 +226,31 @@ Run controller
 			avg_current_array[i] = 0.2 * current + 0.8 * avg_current_array[i];
 		}
 
+		if(myCounter%10==0){
 			alt_write_word(h2p_lw_quad_reset_addr, 0);
 			//int32_t setpoint = 2000*10*0.1*sin(rc_nanos_since_epoch()/pow(10,9)*1*3.14);
 			//int32_t setpoint = 0;			
-//printf("%d\n", setpoint);
+	//printf("%d\n", setpoint);
 			internal_encoders[0] = alt_read_word(h2p_lw_quad_addr[0]);
 			internal_encoders[1] = alt_read_word(h2p_lw_quad_addr[1]);
 			int32_t error =  internal_encoders[0] - position_setpoints[0];
 
 			alt_write_word(h2p_lw_pid_input_addr[1], error);
-			int32_t check_error = (int32_t)(*h2p_lw_quad_addr[0]);
+			//int32_t check_error = (int32_t)(*h2p_lw_quad_addr[0]);
 			
 			double pid_output_ARM;
 			pid_output_ARM = rc_filter_march(&ARM_PID0, error) * 2048;
 
 			int32_t pid_output = (int32_t)pid_output_ARM;
+			
+
 			int32_t positive_pid_output = (pid_output>=0);
+
+			//if (fabs(pid_output) > 0)
+			//	pid_output += 50;
 			int32_t pid_output_cutoff = fabs(pid_output)*(fabs(pid_output) <= 2047) + 2047*(fabs(pid_output) > 2047);
 
+			//EDITED LATE AT NIGHT DIMITRI
 			alt_write_word(h2p_lw_pwm_values_addr[0], (pid_output_cutoff));
 					
 			dir_bitmask = alt_read_word(h2p_lw_gpio1_addr);
@@ -248,25 +261,17 @@ Run controller
 			alt_write_word(h2p_lw_gpio1_addr, dir_bitmask);
 			//printf("Plastic:%d\n Wood:%d\n", alt_read_word(h2p_lw_quad_addr[0]), alt_read_word(h2p_lw_quad_addr[1]));
 		}
-		if(0 && myCounter%10 == 0 && myCounter > 100){
-			currentPosition = alt_read_word(h2p_lw_quad_addr[1]);
-			printf("%d: %d\n", currentPosition, abs(currentPosition * ez_p));
-			if (currentPosition < 0){
-				alt_write_word(h2p_lw_gpio1_addr, 0);
-			}else{
-				alt_write_word(h2p_lw_gpio1_addr, 1<<7);
-			}
-			for(k=0;k<8;k++){
-				alt_write_word(h2p_lw_pwm_values_addr[0], abs(currentPosition * ez_p));
-			}
-		}
+
+
+		//int32_t pwm_pid_output_cutoff = fabs(pid_output)*(fabs(pid_output) <= 2047) + 2047*(fabs(pid_output) > 2047);
+		//alt_write_word(h2p_lw_pwm_values_addr[0], (pwm_pid_output_cutoff));
 
 		myCounter++;
 		loopStartTime = rc_nanos_since_epoch();
 		global_loop_start_time = loopStartTime;
 
 		loopEndTime = rc_nanos_since_epoch();
-		int uSleepTime = (dt*pow(10,6) - (int)(loopEndTime - loopStartTime)/1000);
+		int uSleepTime = (dt/10*pow(10,6) - (int)(loopEndTime - loopStartTime)/1000);
 		//rc_usleep(1000);
 		if(uSleepTime > 0){
 			rc_usleep(uSleepTime);
@@ -295,4 +300,3 @@ Run controller
 	close( fd );
 	return 0;
 }
-

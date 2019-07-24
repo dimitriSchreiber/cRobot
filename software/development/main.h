@@ -67,7 +67,7 @@ float avg_current;
 float avg_current_array[8];
 uint64_t global_loop_start_time;
 
-pthread_t pth, pth_heartbeat;	// this is our thread identifier
+pthread_t pth, pth_heartbeat, pth_current;	// this is our thread identifier
 
 //Struct -> not used?
 struct axis_motor{

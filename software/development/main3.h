@@ -36,6 +36,8 @@ volatile unsigned long *h2p_lw_pid_output_addr[8];
 volatile unsigned long *h2p_lw_pwm_values_addr[8];
 volatile unsigned long *h2p_lw_adc;
 volatile int32_t position_setpoints[8];
+volatile uint32_t pwm_setpoint;
+volatile uint32_t current_setpoint;
 
 int E_STATE;
 int ERR_RESET;

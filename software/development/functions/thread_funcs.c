@@ -40,6 +40,22 @@ void *heartbeat_func(void *arg){
 
 }
 
+
+void *current_func(void *arg){
+	mask_sig();
+
+	//rc_filter_t PID = rc_filter_empty();
+	//rc_filter_pid(&PID, 0.1, 0, 0, 1*0.0001, 0.0001);
+	while(1 && exit_flag == 0){
+			
+		rc_usleep(100);//1.1 seconds
+	}
+
+	printf("Exiting heartbeat thread\n");
+	pthread_exit(NULL);
+
+}
+
 //Communication Function Thread
 void *threadFunc(void *arg) {
 	mask_sig();
